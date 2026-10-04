@@ -1,0 +1,1 @@
+-- SQLite Schema Definition - To be implemented by Person 4
