@@ -9,11 +9,21 @@ from datetime import datetime, date, timedelta
 from typing import List, Dict, Any, Optional
 from werkzeug.security import generate_password_hash
 
-DB_FILE = os.environ.get("EXPENSES_DB", os.path.join(os.path.dirname(os.path.abspath(__file__)), "expenses.db"))
+def get_db_path() -> str:
+    """Returns database file path, supporting serverless /tmp fallback and environment overrides."""
+    if "EXPENSES_DB" in os.environ:
+        return os.environ["EXPENSES_DB"]
+    if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+        return "/tmp/expenses.db"
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "expenses.db")
+
+DB_FILE = get_db_path()
 
 def get_db_connection() -> sqlite3.Connection:
     """Creates a connection to SQLite database with Row factory and foreign keys enabled."""
-    conn = sqlite3.connect(DB_FILE)
+    db_path = DB_FILE or get_db_path()
+    os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
+    conn = sqlite3.connect(db_path, timeout=30.0, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn

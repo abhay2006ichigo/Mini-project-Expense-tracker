@@ -11,3 +11,4 @@ if spec and spec.loader:
     main_app = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(main_app)
     app = main_app.app
+    application = app

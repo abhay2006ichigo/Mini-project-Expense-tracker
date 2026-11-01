@@ -13,8 +13,17 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 import database
 
-app = Flask(__name__, template_folder="templates", static_folder="static")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+app = Flask(
+    __name__,
+    template_folder=os.path.join(BASE_DIR, "templates"),
+    static_folder=os.path.join(BASE_DIR, "static")
+)
 app.secret_key = os.environ.get("SECRET_KEY", "expense-tracker-secret-key-2026")
+
+# Top-level WSGI aliases for Vercel and WSGI servers
+application = app
 
 # Category color palette matching design system and screenshots
 CATEGORY_COLORS = {
@@ -102,9 +111,22 @@ def compact_inr_filter(value):
     except (ValueError, TypeError):
         return f"₹{value}"
 
-# Initialize DB on start
-with app.app_context():
-    database.init_db(seed_sample_data=True)
+# Initialize DB on start safely
+try:
+    with app.app_context():
+        database.init_db(seed_sample_data=True)
+except Exception as e:
+    app.logger.warning(f"Database initialization deferred: {e}")
+
+@app.before_request
+def ensure_database():
+    """Ensure database tables exist in serverless environments."""
+    if not getattr(app, "_db_initialized", False):
+        try:
+            database.init_db(seed_sample_data=True)
+            app._db_initialized = True
+        except Exception as e:
+            app.logger.warning(f"Database auto-init check: {e}")
 
 # ----------------- Auth Helpers ----------------- #
 
@@ -225,6 +247,7 @@ def logout_view():
 # ----------------- Page Views (Protected) ----------------- #
 
 @app.route("/")
+@app.route("/dashboard")
 @login_required
 def dashboard_view():
     now = datetime.now()
