@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}Spending Overview - Expense Tracker{% endblock %}
+{% block nav_dashboard %}active{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header">
+  <div class="header-title-group">
+    <h1>Spending Overview</h1>
+    <p id="dashboardDateSubtitle">{{ current_month }} {{ current_year }}</p>
+  </div>
+  <button type="button" class="btn-primary" onclick="openAddModal()">
+    <svg><use href="#icon-plus"></use></svg>
+    <span>New Transaction</span>
+  </button>
+</div>
+
+<!-- 4 Summary Cards -->
+<div class="summary-grid">
+  <!-- 1. Total Spent -->
+  <div class="summary-card">
+    <div class="card-label">Total Spent &bull; This Month</div>
+    <div class="card-value" id="statTotalSpent">₹0</div>
+    <div class="card-footer">
+      <div class="trend-badge red" id="statTotalTrend">
+        <span id="statTotalTrendIcon">&searr;</span>
+        <span id="statTotalTrendVal">0.0%</span>
+      </div>
+      <div class="sparkline-container" id="sparklineSpent"></div>
+    </div>
+  </div>
+
+  <!-- 2. Daily Average -->
+  <div class="summary-card">
+    <div class="card-label">Daily Average</div>
+    <div class="card-value" id="statDailyAvg">₹0</div>
+    <div class="card-footer">
+      <div class="trend-badge muted" id="statDailyTrend">
+        <span id="statDailyTrendIcon">&searr;</span>
+        <span id="statDailyTrendVal">0.0%</span>
+      </div>
+      <div class="sparkline-container" id="sparklineDaily"></div>
+    </div>
+  </div>
+
+  <!-- 3. Top Category -->
+  <div class="summary-card">
+    <div class="card-label">Top Category</div>
+    <div class="card-value" id="statTopCat" style="font-size: 22px;">None</div>
+    <div class="card-footer">
+      <div class="trend-badge muted" id="statTopTrend">
+        <span id="statTopTrendIcon">&nearr;</span>
+        <span id="statTopTrendVal">0.0%</span>
+      </div>
+      <div class="sparkline-container" id="sparklineTop"></div>
+    </div>
+  </div>
+
+  <!-- 4. Remaining Budget -->
+  <div class="summary-card">
+    <div class="card-label">Remaining Budget</div>
+    <div class="card-value" id="statRemainingBudget" style="color: var(--accent-green);">₹30,000</div>
+    <div class="card-footer">
+      <div class="trend-badge green" id="statBudgetTrend">
+        <span id="statBudgetTrendIcon">&nearr;</span>
+        <span id="statBudgetTrendVal">100.0%</span>
+      </div>
+      <div class="sparkline-container" id="sparklineBudget"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Dashboard Main Columns -->
+<div class="dashboard-columns">
+  <!-- Left Column: Charts -->
+  <div class="col-left">
+    <!-- Spending Breakdown Stacked Bar Chart -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <h2>Spending Breakdown</h2>
+          <p>Stacked spend velocity by category</p>
+        </div>
+        <div class="pill-tabs" id="periodTabs">
+          <button type="button" class="pill-tab" data-period="7D">7D</button>
+          <button type="button" class="pill-tab active" data-period="30D">30D</button>
+          <button type="button" class="pill-tab" data-period="6M">6M</button>
+          <button type="button" class="pill-tab" data-period="YTD">YTD</button>
+        </div>
+      </div>
+      
+      <!-- Chart Canvas/SVG Container -->
+      <div class="chart-container" id="breakdownChartContainer">
+        <svg class="chart-svg" id="stackedChartSvg"></svg>
+        <div class="chart-tooltip" id="chartTooltip"></div>
+      </div>
+    </div>
+
+    <!-- Category Share Donut Chart -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <h2>Category Share</h2>
+          <p>Expense distribution for this month</p>
+        </div>
+      </div>
+      <div class="donut-section">
+        <div class="donut-chart-wrapper">
+          <svg class="donut-chart-svg" viewBox="0 0 160 160" id="donutChartSvg"></svg>
+          <div class="donut-center-text">
+            <div class="donut-center-label">Total</div>
+            <div class="donut-center-value" id="donutCenterTotal">₹0</div>
+          </div>
+        </div>
+        <div class="donut-legend" id="donutLegendContainer">
+          <!-- Dynamic legend items inserted by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Column: Quick Log & Recent Expenses -->
+  <div class="col-right">
+    <!-- Quick Log Panel -->
+    <div class="quick-log-card">
+      <div class="quick-log-header">
+        <h3>Quick Log</h3>
+        <span class="quick-log-subtitle">Instant entry</span>
+      </div>
+      <form id="quickLogForm">
+        <div class="amount-input-box">
+          <label class="label">Amount</label>
+          <div class="amount-input-flex">
+            <span class="amount-symbol">₹</span>
+            <input type="number" step="any" min="1" class="amount-field" id="quickAmount" placeholder="0" value="0" required>
+          </div>
+        </div>
+
+        <!-- Quick Amount Pills -->
+        <div class="quick-amount-pills">
+          <button type="button" class="pill-amount" data-amount="50">₹50</button>
+          <button type="button" class="pill-amount" data-amount="100">₹100</button>
+          <button type="button" class="pill-amount" data-amount="200">₹200</button>
+          <button type="button" class="pill-amount" data-amount="500">₹500</button>
+        </div>
+
+        <!-- Category Grid Selector -->
+        <span class="category-select-label">Category</span>
+        <div class="category-grid" id="categoryGrid">
+          <div class="cat-btn selected" data-category="Food">
+            <div class="cat-icon cat-bg-food">
+              <svg><use href="#icon-utensils"></use></svg>
+            </div>
+            <span class="cat-name">Food</span>
+          </div>
+          <div class="cat-btn" data-category="Transport">
+            <div class="cat-icon cat-bg-transport">
+              <svg><use href="#icon-car"></use></svg>
+            </div>
+            <span class="cat-name">Transport</span>
+          </div>
+          <div class="cat-btn" data-category="Shopping">
+            <div class="cat-icon cat-bg-shopping">
+              <svg><use href="#icon-shopping-bag"></use></svg>
+            </div>
+            <span class="cat-name">Shopping</span>
+          </div>
+          <div class="cat-btn" data-category="Bills">
+            <div class="cat-icon cat-bg-bills">
+              <svg><use href="#icon-receipt"></use></svg>
+            </div>
+            <span class="cat-name">Bills</span>
+          </div>
+          <div class="cat-btn" data-category="Entertainment">
+            <div class="cat-icon cat-bg-entertainment">
+              <svg><use href="#icon-film"></use></svg>
+            </div>
+            <span class="cat-name">Entertainment</span>
+          </div>
+          <div class="cat-btn" data-category="Health">
+            <div class="cat-icon cat-bg-health">
+              <svg><use href="#icon-heart-pulse"></use></svg>
+            </div>
+            <span class="cat-name">Health</span>
+          </div>
+          <div class="cat-btn" data-category="Education">
+            <div class="cat-icon cat-bg-education">
+              <svg><use href="#icon-graduation-cap"></use></svg>
+            </div>
+            <span class="cat-name">Education</span>
+          </div>
+          <div class="cat-btn" data-category="Travel">
+            <div class="cat-icon cat-bg-travel">
+              <svg><use href="#icon-plane"></use></svg>
+            </div>
+            <span class="cat-name">Travel</span>
+          </div>
+        </div>
+
+        <!-- Optional Note Input -->
+        <input type="text" class="note-input-field" id="quickNote" placeholder="Add a note (optional)">
+
+        <!-- Prominent Red Button -->
+        <button type="submit" class="btn-log-spend" id="btnLogSpend">
+          <svg style="width: 18px; height: 18px; stroke: #fff; stroke-width: 2.5;"><use href="#icon-plus"></use></svg>
+          <span>Log Spend</span>
+        </button>
+      </form>
+    </div>
+
+    <!-- Recent Expenses Panel -->
+    <div class="recent-panel">
+      <div class="recent-header">
+        <h3>Recent</h3>
+        <span class="count" id="recentEntriesCount">0 total</span>
+      </div>
+
+      <div id="recentListContainer">
+        <!-- Grouped items rendered dynamically -->
+      </div>
+
+      <div style="text-align: center; margin-top: 8px;">
+        <a href="/transactions" style="font-size: 13px; font-weight: 600; color: var(--primary-red);">
+          View all transactions &rarr;
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

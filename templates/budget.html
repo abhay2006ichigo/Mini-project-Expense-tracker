@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Budget - Expense Tracker{% endblock %}
+{% block nav_budget %}active{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header">
+  <div class="header-title-group">
+    <h1>Budget</h1>
+    <p>Set a monthly spending limit and track progress.</p>
+  </div>
+</div>
+
+<div class="budget-grid">
+  <!-- 1. Budget Overview Card -->
+  <div class="card budget-overview-card">
+    <div class="progress-circle-wrapper">
+      <svg class="progress-circle-svg" viewBox="0 0 140 140">
+        <circle cx="70" cy="70" r="54" class="progress-circle-bg"/>
+        <circle cx="70" cy="70" r="54" class="progress-circle-bar" id="budgetProgressCircle"/>
+      </svg>
+      <div class="progress-circle-text">
+        <div class="progress-percent-val" id="budgetPercentVal">0%</div>
+        <div class="progress-percent-lbl">used</div>
+      </div>
+    </div>
+
+    <div class="budget-stats-list">
+      <div class="budget-stat-row">
+        <span class="stat-name">Spent</span>
+        <span class="stat-amount" id="budgetStatSpent">₹0</span>
+      </div>
+      <div class="budget-stat-row">
+        <span class="stat-name">Budget</span>
+        <span class="stat-amount" id="budgetStatLimit">₹30,000</span>
+      </div>
+      <div class="budget-stat-row">
+        <span class="stat-name">Remaining</span>
+        <span class="stat-amount green" id="budgetStatRemaining">₹30,000</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Monthly Budget Settings Card -->
+  <div class="card">
+    <h3 style="font-size: 16px; font-weight: 700; color: var(--text-navy); margin-bottom: 14px;">Monthly Limit</h3>
+    <form id="budgetSettingsForm">
+      <div class="budget-limit-input-group">
+        <div class="budget-limit-input-box">
+          <span>₹</span>
+          <input type="number" step="any" min="0" id="budgetLimitInput" value="30000" required>
+        </div>
+        <button type="submit" class="btn-dark">
+          <svg style="width: 16px; height: 16px; stroke: #fff;"><use href="#icon-check"></use></svg>
+          <span>Save</span>
+        </button>
+      </div>
+
+      <!-- Preset Pills -->
+      <div class="budget-presets">
+        <button type="button" class="preset-pill" data-amount="15000">₹15,000</button>
+        <button type="button" class="preset-pill" data-amount="25000">₹25,000</button>
+        <button type="button" class="preset-pill" data-amount="40000">₹40,000</button>
+        <button type="button" class="preset-pill" data-amount="60000">₹60,000</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- 3. Where It Goes Card -->
+  <div class="card">
+    <h3 style="font-size: 16px; font-weight: 700; color: var(--text-navy); margin-bottom: 16px;">Where it goes</h3>
+    <div id="whereItGoesContainer">
+      <!-- Empty state or category breakdown items -->
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/budget.js') }}"></script>
+{% endblock %}
