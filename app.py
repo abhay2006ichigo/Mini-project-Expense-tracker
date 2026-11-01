@@ -769,4 +769,7 @@ def api_update_budget():
     })
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    port = int(os.environ.get("PORT", 5001))
+    print(f" * Running Expense Tracker on http://127.0.0.1:{port}")
+    app.run(host="127.0.0.1", port=port, debug=True)
+
