@@ -8,6 +8,7 @@ ENV/
 .venv
 
 # Database
+*.db
 instance/*.db
 !instance/.gitkeep
 
