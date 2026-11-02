@@ -1,0 +1,11 @@
+.git
+.vercel
+__pycache__/
+*.py[cod]
+*.db
+instance/
+tests/
+venv/
+.venv/
+.env
+.env.*

@@ -20,3 +20,8 @@ instance/*.db
 .DS_Store
 .vscode/
 .idea/
+
+# Vercel
+.vercel/
+.vercel
+.env*
