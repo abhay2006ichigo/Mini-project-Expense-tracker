@@ -1,0 +1,11 @@
+.git
+.gitignore
+__pycache__/
+*.py[cod]
+*.db
+instance/
+tests/
+venv/
+.venv/
+.env
+.DS_Store

@@ -10,9 +10,11 @@ from typing import List, Dict, Any, Optional
 from werkzeug.security import generate_password_hash
 
 def get_db_path() -> str:
-    """Returns database file path, supporting serverless /tmp fallback and environment overrides."""
-    if "EXPENSES_DB" in os.environ:
+    """Returns database file path, supporting persistent volumes, env overrides, and serverless /tmp fallback."""
+    if os.environ.get("EXPENSES_DB"):
         return os.environ["EXPENSES_DB"]
+    if os.environ.get("DATA_DIR"):
+        return os.path.join(os.environ["DATA_DIR"], "expenses.db")
     if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
         return "/tmp/expenses.db"
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), "expenses.db")

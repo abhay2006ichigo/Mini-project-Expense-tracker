@@ -22,7 +22,7 @@ app = Flask(
 )
 app.secret_key = os.environ.get("SECRET_KEY", "expense-tracker-secret-key-2026")
 
-# Top-level WSGI aliases for Vercel and WSGI servers
+# Top-level WSGI aliases for Vercel, Gunicorn, and other WSGI servers
 application = app
 
 # Category color palette matching design system and screenshots
@@ -117,6 +117,16 @@ try:
         database.init_db(seed_sample_data=True)
 except Exception as e:
     app.logger.warning(f"Database initialization deferred: {e}")
+
+@app.route("/health")
+def health_check():
+    """Lightweight liveness probe used by hosting platforms."""
+    try:
+        database.get_db_connection().close()
+        return jsonify({"status": "ok"}), 200
+    except Exception as e:
+        app.logger.error(f"Health check failed: {e}")
+        return jsonify({"status": "error"}), 503
 
 @app.before_request
 def ensure_database():
@@ -793,6 +803,8 @@ def api_update_budget():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5001))
-    print(f" * Running Expense Tracker on http://127.0.0.1:{port}")
-    app.run(host="127.0.0.1", port=port, debug=True)
+    host = os.environ.get("HOST", "0.0.0.0")
+    debug = os.environ.get("FLASK_DEBUG", "0").lower() in ("1", "true", "yes")
+    print(f" * Running Expense Tracker on http://{host}:{port}")
+    app.run(host=host, port=port, debug=debug)
 

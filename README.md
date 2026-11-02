@@ -290,8 +290,63 @@ python app.py
 Open:
 
 ```text
-http://127.0.0.1:5000
+http://127.0.0.1:5001
 ```
+
+---
+
+# 🚀 Deployment
+
+The app ships with production configuration for the most common Python hosts.
+
+### Environment variables
+
+| Variable | Description | Default |
+|---|---|---|
+| `SECRET_KEY` | Flask session signing key. Set this in production. | Development key |
+| `PORT` | Port the server listens on. | `5001` locally, `8000` in Docker |
+| `HOST` | Bind address when running `python app.py`. | `0.0.0.0` |
+| `FLASK_DEBUG` | Set to `1` to enable the debugger locally. Keep `0` in production. | `0` |
+| `EXPENSES_DB` | Absolute path to the SQLite file. Takes precedence over `DATA_DIR`. | — |
+| `DATA_DIR` | Directory where `expenses.db` is stored. Use a mounted volume for persistence. | Project root |
+
+Copy `.env.example` to `.env` and adjust the values for local or server use.
+
+### Docker (any host)
+
+```bash
+docker build -t expense-tracker .
+docker run -p 8000:8000 \
+  -e SECRET_KEY="$(python3 -c 'import secrets; print(secrets.token_hex(32))')" \
+  -v expense-data:/data \
+  expense-tracker
+```
+
+The container stores the database on the `/data` volume so data survives restarts. The `/health` endpoint is used as the container health check.
+
+### Render / Railway / Heroku
+
+These platforms read the included `Procfile`:
+
+```text
+web: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 8 --timeout 60
+```
+
+Set `SECRET_KEY` in the dashboard. For a persistent SQLite database, attach a disk and set `DATA_DIR` to its mount path.
+
+### Vercel
+
+Vercel detects the Flask `app` in `app.py` automatically; `vercel.json` configures the function. Set `SECRET_KEY` in the project environment variables.
+
+> **Note:** Vercel Functions have an ephemeral filesystem, so the SQLite database is created in `/tmp` and is **not persistent** across deployments or instances. Use Docker or Render/Railway with a persistent disk if you need durable multi-user data.
+
+### Health check
+
+```text
+GET /health
+```
+
+Returns `{"status": "ok"}` when the app and database are reachable.
 
 ---
 
