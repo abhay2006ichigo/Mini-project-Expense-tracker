@@ -94,7 +94,13 @@ class DictCursor:
     def _to_dict(self, row: Any) -> Optional[Dict[str, Any]]:
         if row is None:
             return None
-        return {name: row[index] for index, name in enumerate(self._columns)}
+        result: Dict[str, Any] = {}
+        for index, name in enumerate(self._columns):
+            value = row[index]
+            if isinstance(value, (date, datetime)):
+                value = value.isoformat()
+            result[name] = value
+        return result
 
     def fetchone(self) -> Optional[Dict[str, Any]]:
         return self._to_dict(self._cursor.fetchone())
