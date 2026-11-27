@@ -4,23 +4,30 @@ Unit tests for database module with multi-user isolation.
 
 import os
 import unittest
-import tempfile
 from datetime import date
 from werkzeug.security import generate_password_hash
 import database
 
+TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
+
+@unittest.skipUnless(TEST_DATABASE_URL, "TEST_DATABASE_URL must point to a PostgreSQL test database")
 class TestDatabase(unittest.TestCase):
     def setUp(self):
-        self.temp_dir = tempfile.mkdtemp()
-        self.test_db = os.path.join(self.temp_dir, "test_expenses.db")
-        database.DB_FILE = self.test_db
+        if TEST_DATABASE_URL.replace("postgres://", "postgresql://", 1) == database.get_database_url():
+            raise RuntimeError("TEST_DATABASE_URL must be a separate database from DATABASE_URL")
+        self.original_url = database.DATABASE_URL
+        database.DATABASE_URL = TEST_DATABASE_URL
+        conn = database.get_db_connection()
+        with conn.cursor() as cursor:
+            cursor.execute("DROP TABLE IF EXISTS transactions, budgets, users CASCADE")
+        conn.commit()
+        conn.close()
         database.init_db(seed_sample_data=False)
         self.user1_id = database.create_user("alice", generate_password_hash("pass123"))
         self.user2_id = database.create_user("bob", generate_password_hash("pass456"))
 
     def tearDown(self):
-        if os.path.exists(self.test_db):
-            os.remove(self.test_db)
+        database.DATABASE_URL = self.original_url
 
     def test_user_creation_and_retrieval(self):
         user = database.get_user_by_username("alice")

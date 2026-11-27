@@ -4,17 +4,26 @@ Unit and integration tests for Expense Tracker endpoints with multi-user session
 
 import os
 import unittest
-import tempfile
 from datetime import date
 from werkzeug.security import generate_password_hash
 import database
 from app import app
 
+TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
+
+@unittest.skipUnless(TEST_DATABASE_URL, "TEST_DATABASE_URL must point to a PostgreSQL test database")
 class TestExpenses(unittest.TestCase):
     def setUp(self):
-        self.temp_dir = tempfile.mkdtemp()
-        self.test_db = os.path.join(self.temp_dir, "test_app_expenses.db")
-        database.DB_FILE = self.test_db
+        if TEST_DATABASE_URL.replace("postgres://", "postgresql://", 1) == database.get_database_url():
+            raise RuntimeError("TEST_DATABASE_URL must be a separate database from DATABASE_URL")
+        self.original_url = database.DATABASE_URL
+        self.original_initialized = getattr(app, "_db_initialized", False)
+        database.DATABASE_URL = TEST_DATABASE_URL
+        conn = database.get_db_connection()
+        with conn.cursor() as cursor:
+            cursor.execute("DROP TABLE IF EXISTS transactions, budgets, users CASCADE")
+        conn.commit()
+        conn.close()
         database.init_db(seed_sample_data=False)
 
         # Create two separate users
@@ -22,11 +31,12 @@ class TestExpenses(unittest.TestCase):
         self.user2_id = database.create_user("testuser2", generate_password_hash("pass456"))
 
         app.config["TESTING"] = True
+        app._db_initialized = True
         self.client = app.test_client()
 
     def tearDown(self):
-        if os.path.exists(self.test_db):
-            os.remove(self.test_db)
+        database.DATABASE_URL = self.original_url
+        app._db_initialized = self.original_initialized
 
     def login_as(self, user_id: int, username: str):
         with self.client.session_transaction() as sess:

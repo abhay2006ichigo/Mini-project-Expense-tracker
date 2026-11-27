@@ -1,1 +1,1 @@
--- SQLite Schema Definition - To be implemented by Person 4
+-- PostgreSQL Schema Definition - To be implemented by Person 4

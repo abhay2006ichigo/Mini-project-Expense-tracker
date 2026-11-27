@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    {
+      "source": "/:path*",
+      "destination": "https://YOUR_FLY_APP_NAME.fly.dev/:path*"
+    }
+  ]
+}
