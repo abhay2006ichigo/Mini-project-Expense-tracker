@@ -4,11 +4,12 @@ Manages PostgreSQL connections, schema creation, user accounts, and per-user dat
 """
 
 import os
+import ssl
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional
+from urllib.parse import parse_qsl, unquote, urlparse
 
-import psycopg
-from psycopg.rows import dict_row
+import pg8000.dbapi
 from werkzeug.security import generate_password_hash
 
 DEFAULT_DATABASE_URL = "postgresql://postgres@localhost:5432/expense_tracker"
@@ -25,13 +26,83 @@ def get_database_url() -> str:
 DATABASE_URL = get_database_url()
 
 
-def get_db_connection() -> psycopg.Connection:
-    """Creates a PostgreSQL connection whose rows behave like dictionaries."""
-    return psycopg.connect(
-        DATABASE_URL or get_database_url(),
-        row_factory=dict_row,
-        connect_timeout=10,
-    )
+def _connection_params(url: str) -> Dict[str, Any]:
+    """Converts a PostgreSQL URL into pg8000 connection arguments."""
+    parsed = urlparse(url)
+    options = dict(parse_qsl(parsed.query))
+    params: Dict[str, Any] = {
+        "user": unquote(parsed.username) if parsed.username else "postgres",
+        "password": unquote(parsed.password) if parsed.password else None,
+        "host": parsed.hostname or "localhost",
+        "port": parsed.port or 5432,
+        "database": parsed.path.lstrip("/") or "expense_tracker",
+        "timeout": int(options.get("connect_timeout", "10")),
+    }
+    if options.get("sslmode") in ("require", "verify-ca", "verify-full"):
+        context = ssl.create_default_context()
+        if options["sslmode"] == "require":
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+        params["ssl_context"] = context
+    return params
+
+
+class DictCursor:
+    """pg8000 cursor that returns rows as dictionaries."""
+
+    def __init__(self, cursor: Any):
+        self._cursor = cursor
+        self._columns: List[str] = []
+
+    def __enter__(self) -> "DictCursor":
+        return self
+
+    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
+        self._cursor.close()
+
+    def execute(self, sql: str, params: Optional[Any] = None) -> None:
+        self._cursor.execute(sql, params if params is not None else ())
+        self._columns = [column[0] for column in (self._cursor.description or ())]
+
+    def executemany(self, sql: str, params: Any) -> None:
+        self._cursor.executemany(sql, params)
+        self._columns = []
+
+    def _to_dict(self, row: Any) -> Optional[Dict[str, Any]]:
+        if row is None:
+            return None
+        return {name: row[index] for index, name in enumerate(self._columns)}
+
+    def fetchone(self) -> Optional[Dict[str, Any]]:
+        return self._to_dict(self._cursor.fetchone())
+
+    def fetchall(self) -> List[Dict[str, Any]]:
+        return [self._to_dict(row) for row in self._cursor.fetchall()]
+
+    @property
+    def rowcount(self) -> int:
+        return self._cursor.rowcount
+
+
+class PgConnection:
+    """Thin pg8000 wrapper providing dictionary cursors."""
+
+    def __init__(self, url: str):
+        self._connection = pg8000.dbapi.connect(**_connection_params(url))
+
+    def cursor(self) -> DictCursor:
+        return DictCursor(self._connection.cursor())
+
+    def commit(self) -> None:
+        self._connection.commit()
+
+    def close(self) -> None:
+        self._connection.close()
+
+
+def get_db_connection() -> PgConnection:
+    """Creates a pure-Python PostgreSQL connection, suitable for Vercel Functions."""
+    return PgConnection(DATABASE_URL or get_database_url())
 
 
 def init_db(seed_sample_data: bool = True) -> None:
@@ -116,7 +187,7 @@ def get_user_by_id(user_id: int) -> Optional[Dict[str, Any]]:
     conn.close()
     return dict(row) if row else None
 
-def seed_data(conn: Optional[psycopg.Connection] = None) -> int:
+def seed_data(conn: Optional[PgConnection] = None) -> int:
     """Seeds a demo user with realistic sample transactions and budget."""
     should_close = False
     if conn is None:

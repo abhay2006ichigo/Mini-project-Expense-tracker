@@ -22,7 +22,7 @@ The project allows users to securely manage their expenses, categorize transacti
 
 ### Database
 - PostgreSQL
-- psycopg 3
+- pg8000 (pure Python, works on Vercel)
 
 ### Development
 - Git
@@ -349,7 +349,7 @@ Set `SECRET_KEY` and `DATABASE_URL` in the dashboard, pointing to a managed Post
 
 Vercel detects the Flask `app` in `app.py` automatically; `vercel.json` configures the function. Set `SECRET_KEY` in the project environment variables.
 
-> **Note:** Vercel Functions have an ephemeral filesystem, but all data lives in PostgreSQL. Set `DATABASE_URL` to a hosted PostgreSQL instance so every function instance shares the same durable data.
+> **Note:** Vercel Functions have an ephemeral filesystem, but all data lives in PostgreSQL. Add a hosted PostgreSQL integration (for example Neon or Supabase), then set `DATABASE_URL` in the Vercel project (include `?sslmode=require` if your provider requires TLS). The app uses the pure-Python `pg8000` driver, so no native PostgreSQL libraries or compiled extensions are needed in the Vercel runtime.
 
 ### Health check
 
