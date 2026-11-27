@@ -25,3 +25,5 @@ instance/*.db
 .vercel/
 .vercel
 .env*
+.neon
+node_modules/
